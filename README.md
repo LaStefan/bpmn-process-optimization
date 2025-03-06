@@ -6,7 +6,7 @@ This is the repository for the BPMN course at Utrecht University related to the 
 
 1. Fork the repository
      ```bash
-    git clone https://github.com/LaStefan/esg-stocks-dashboard.git
+    git clone https://github.com/LaStefan/bpmn-process-optimization.git
 
 - **if you already cloned the repo make sure to do this always before creating a new branch for your work:**
     ```bash
