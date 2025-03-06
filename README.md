@@ -32,9 +32,8 @@ This is the repository for the BPMN course at Utrecht University related to the 
     git commit -m 'Add new feature'
     ```
 
-5. Push to the branch
+4. Push to the branch
     ```bash 
     git push origin <branch-name>
     ````
     
-6. Open a pull request.
