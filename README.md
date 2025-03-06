@@ -24,12 +24,17 @@ This is the repository for the BPMN course at Utrecht University related to the 
     ```bash
     git checkout -b <branch-name>
 
-3. Commit your changes
+3. Add and commit your changes
+    ```bash
+    git add .
+    ```
     ```bash
     git commit -m 'Add new feature'
+    ```
 
-4. Push to the branch
+5. Push to the branch
     ```bash 
-    git push origin feature-branch
+    git push origin <branch-name>
+    ````
     
-5. Open a pull request.
+6. Open a pull request.
