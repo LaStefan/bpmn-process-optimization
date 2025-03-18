@@ -33,6 +33,45 @@ class HeuristicPlanner(Planner):
             case_id, element, timestamp, resource, lifecycle_state, data
         )
 
+    def calculate_priority(self, case_id, simulation_time, is_replan):
+        """Compute a priority score based on waiting time, diagnosis, and replanning. The higher the score, the higher priority a patient has"""
+        # TODO: We have to find a way to retrieve the patient information based on the case_id
+        info = self.patient_info.get(case_id, {})
+        # Calculate waiting time from arrival
+        arrival_time = info.get("arrival_time", simulation_time)
+        waiting_time = simulation_time - arrival_time
+
+        # Retrieve diagnosis information (if available)
+        diagnosis = info.get("diagnosis", None)
+
+        # Weights for each factor (tune these values based on simulation results)
+        waiting_weight = 1  # Every hour waiting adds to priority
+        diagnosis_weight = 10  # Severity factor: severe cases should be prioritized
+
+        # Map diagnosis to a severity score: adjust these values as needed.
+        # For example, "severe" patients are given a higher score.
+        severity_score = 0
+        # These values need to be changed
+        if diagnosis is not None:
+            if diagnosis == "B1":
+                severity_score = 3
+            elif diagnosis == "A2":
+                severity_score = 2
+            elif diagnosis == "A3":
+                severity_score = 1
+
+        # If the case is being replanned, apply a penalty if the new plan is too close to the original
+        replanning_penalty = 0
+        if is_replan:
+            replanning_penalty = 20
+        # Total priority score: higher scores indicate a higher urgency for admission.
+        priority = (
+            waiting_weight * waiting_time
+            + diagnosis_weight * severity_score
+            + replanning_penalty
+        )
+        return priority
+
     def plan(self, cases_to_plan, cases_to_replan, simulation_time):
         """
         Each time a new task is enabled or a resource becomes available, this method is invoked so you can decide which patients to admit when.
@@ -45,19 +84,27 @@ class HeuristicPlanner(Planner):
         Your plan must observe the following constraints:
         - patients must be planned for admission at least 24 hours ahead of their admission time.
         """
-        # We use a pretty naive approach for demonstration purposes:
-        # - We initially plan all patients for 48 hours from now.
-        # - We replan all patients that are already planned for 24 hours from now.
-        # This is done because patients cannot be planned less than 24 hours (constraint), and therefore have to be replanned.
-        planned_cases = []
-        next_plannable_time = round(simulation_time + 48)
-        next_replannable_time = round((simulation_time + 24) + 0.5)
+        priority_dict = {}
         for case_id in cases_to_plan:
-            planned_cases.append((case_id, next_plannable_time))
+            priority_dict[case_id] = self.calculate_priority(
+                case_id, simulation_time, is_replan=False
+            )
         for case_id in cases_to_replan:
-            if case_id not in self.replanned_patients:
-                planned_cases.append((case_id, next_replannable_time))
-                self.replanned_patients.add(case_id)
+            priority_dict[case_id] = self.calculate_priority(
+                case_id, simulation_time, is_replan=True
+            )
+        # Sort based on priority
+        sorted_cases = sorted(priority_dict.items(), key=lambda x: x[1], reverse=True)
+        planned_cases = []
+        for case_id, priority in sorted_cases:
+            # Schedule high-priority cases sooner
+            # What we can also do here is record the original planned time.
+            if priority > 100:  # Arbitrary threshold, adjust based on testing
+                planned_time = simulation_time + 24
+            else:
+                planned_time = simulation_time + 48  # Test & Finetune this value
+
+            planned_cases.append((case_id, planned_time))
         return planned_cases
 
     def schedule(self, simulation_time):
@@ -111,7 +158,27 @@ class HeuristicPlanner(Planner):
                 (ResourceType.INTAKE, simulation_time + 168, 1),  # ...
             ]
         else:
-            return []  # On weekends, we do not change the schedule.
+            return [
+                (
+                    ResourceType.OR,
+                    simulation_time + 158,
+                    1,
+                ),  # In the weekends, there will be 1 OR
+                (
+                    ResourceType.A_BED,
+                    simulation_time + 158,
+                    30,
+                ),  # Scale down A beds in the weekend. This number should be changed based on testing results.
+                (ResourceType.B_BED, simulation_time + 158, 10),
+                (ResourceType.INTAKE, simulation_time + 158, 1),
+                (ResourceType.ER_PRACTITIONER, simulation_time + 158, 4),
+                (
+                    ResourceType.OR,
+                    simulation_time + 168,
+                    1,
+                ),  # This day next week at 18:00, there will be 1 OR
+                (ResourceType.INTAKE, simulation_time + 168, 1),  # ...
+            ]
 
 
 if __name__ == "__main__":
