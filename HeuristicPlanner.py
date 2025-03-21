@@ -2,11 +2,16 @@ from collections import defaultdict
 from planners import Planner
 from problems import HealthcareProblem, ResourceType
 from simulator import Simulator
+from reporter import EventLogReporter, ResourceScheduleReporter
 
 
 class HeuristicPlanner(Planner):
     def __init__(self, eventlog_file, data_columns):
-        # ... (previous code)
+        super().__init__()
+        self.eventlog_reporter = EventLogReporter(eventlog_file, data_columns)
+        self.resource_reporter = ResourceScheduleReporter()
+        self.replanned_patients = set()
+
         self.kpis = {
             "WTA": [],
             "WTH": defaultdict(list),
@@ -128,9 +133,6 @@ class HeuristicPlanner(Planner):
         hour_of_week = simulation_time % 168
         day_of_week = hour_of_week // 24  # Monday is 0, Tuesday is 1, ..., Sunday is 6
         is_weekday = day_of_week < 5
-        hour_of_day = (
-            hour_of_week % 24
-        )  # Note that this is always 18:00, because that is the moment we plan
 
         # This is a simple example. We will schedule 1 week ahead.
         # On weekdays, we will schedule all resources for 8:00. For 18:00 we will schedule all beds and ER practitioners, but just 1 OR and 1 INTAKE.
