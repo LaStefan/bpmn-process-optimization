@@ -44,15 +44,31 @@ class OptimizedPlanner(Planner):
         for case_id in cases_to_plan:
             diagnosis = self.patient_diagnoses.get(case_id, None)
             
+
+        day_of_week = int((simulation_time // 24) % 7)
+
+        for day_offset in range(14):
+            target_day = (day_of_week + day_offset + 1) % 7
+        
+
             # Simple priority scale
+        if target_day < 5:
+            if diagnosis in ['B1', 'B2']:
+                priority = 1  # Critical
+            elif diagnosis in ['A3', 'A4', 'B3', 'B4']:
+                priority = 0  # Higher
+            else:
+                priority = 2  # Standard
+        else:
             if diagnosis in ['B1', 'B2']:
                 priority = 0  # Critical
             elif diagnosis in ['A3', 'A4', 'B3', 'B4']:
                 priority = 1  # Higher
             else:
                 priority = 2  # Standard
+
                 
-            new_cases.append((case_id, priority))
+        new_cases.append((case_id, priority))
         
         # Sort by priority
         new_cases.sort(key=lambda x: x[1])
@@ -87,8 +103,21 @@ class OptimizedPlanner(Planner):
                 continue
                 
             # Prioritize critical or long-waiting cases
-            if diagnosis in ['B1', 'B2'] or wait_time > 30:
-                priority = 0
+            if target_day > 4:
+                if diagnosis in ['B1', 'B2'] or wait_time > 30:
+                    priority = 0
+                elif diagnosis in ['A3', 'A4', 'B3', 'B4']:
+                    priority = 1  # Higher
+                else:
+                    priority = 2
+                replan_cases.append((case_id, priority, wait_time))
+            else: 
+                if diagnosis in ['B1', 'B2'] or wait_time > 30:
+                    priority = 1
+                elif diagnosis in ['A3', 'A4', 'B3', 'B4']:
+                    priority = 0  # Higher
+                else:
+                    priority = 2
                 replan_cases.append((case_id, priority, wait_time))
         
         # Sort by priority then wait time
@@ -157,36 +186,40 @@ class OptimizedPlanner(Planner):
                 
                 # Morning - near maximum capacity
                 morning_res = {
-                    ResourceType.OR: 5,          # 100% capacity
-                    ResourceType.A_BED: 30,      # 100% capacity
+                    ResourceType.OR: 3,          # 60% capacity
+                    ResourceType.A_BED: 25,      # 83% capacity
                     ResourceType.B_BED: 40,      # 100% capacity
                     ResourceType.INTAKE: 4,      # 100% capacity
-                    ResourceType.ER_PRACTITIONER: 9   # 100% capacity
+                    ResourceType.ER_PRACTITIONER: 3   # 33% capacity
                 }
                 
                 # Afternoon - high but more balanced capacity
                 afternoon_res = {
                     ResourceType.OR: 3,          # 60% capacity
-                    ResourceType.INTAKE: 3,      # 75% capacity
-                    ResourceType.ER_PRACTITIONER: 6   # 67% capacity
+                    ResourceType.A_BED: 25,      # 83% capacity
+                    ResourceType.B_BED: 40,      # 100% capacity
+                    ResourceType.INTAKE: 4,      # 100% capacity
+                    ResourceType.ER_PRACTITIONER: 3   # 33% capacity
                 }
             else:  # Weekend
                 # Weekend - moderate-high capacity
                 
                 # Morning - high capacity for backlog processing
                 morning_res = {
-                    ResourceType.OR: 4,          # 80% capacity
-                    ResourceType.A_BED: 25,      # 83% capacity
-                    ResourceType.B_BED: 35,      # 88% capacity
+                    ResourceType.OR: 2,          # 40% capacity
+                    ResourceType.A_BED: 13,      # 43% capacity
+                    ResourceType.B_BED: 40,      # 100% capacity
                     ResourceType.INTAKE: 3,      # 75% capacity
-                    ResourceType.ER_PRACTITIONER: 7   # 78% capacity
+                    ResourceType.ER_PRACTITIONER: 6   # 67% capacity
                 }
                 
                 # Afternoon - moderate capacity
                 afternoon_res = {
                     ResourceType.OR: 2,          # 40% capacity
+                    ResourceType.A_BED: 13,      # 43% capacity
+                    ResourceType.B_BED: 40,      # 100% capacity
                     ResourceType.INTAKE: 2,      # 50% capacity
-                    ResourceType.ER_PRACTITIONER: 4   # 44% capacity
+                    ResourceType.ER_PRACTITIONER: 6   # 67% capacity
                 }
             
             # Apply morning scheduling
