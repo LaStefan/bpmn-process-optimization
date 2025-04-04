@@ -25,9 +25,7 @@ class OptimizedPlanner(Planner):
         )
 
         if element and element.data and element.data["diagnosis"]:
-            # print(f"adding diagnosis for {case_id}, {element.data['diagnosis']}")
             self.patient_diagnoses[case_id] = element.data["diagnosis"]
-            # print(self.patient_diagnoses)
 
     def plan(self, cases_to_plan, cases_to_replan, simulation_time):
         """
@@ -67,19 +65,16 @@ class OptimizedPlanner(Planner):
                     priority = 1  # Higher
                 else:
                     priority = 2  # Standard
-            # print(target_day < 5, diagnosis, priority)
             new_cases.append((case_id, priority))
-            # print(new_cases)
-        # Sort by priority
 
         for i, (case_id, priority) in enumerate(new_cases):
             # Tight spacing by priority
             if priority == 0:  # Critical
-                admission_time = base_time + (i * 0.5)  # 30 min spacing
+                admission_time = base_time + (i * 0.25)  # 30 min spacing
             elif priority == 1:  # Higher
-                admission_time = base_time + 2 + (i * 0.5)  # 30 min spacing
+                admission_time = base_time + 2 + (i * 0.25)  # 30 min spacing
             else:  # Standard
-                admission_time = base_time + 4 + (i * 0.5)  # 30 min spacing
+                admission_time = base_time + 4 + (i * 0.25)  # 30 min spacing
 
             # Ensure minimum planning horizon
             admission_time = max(admission_time, simulation_time + 24)
@@ -97,12 +92,10 @@ class OptimizedPlanner(Planner):
                 case_id, simulation_time
             )
             last_replanned = self.last_replanned.get(case_id, 0)
-            # print("Last replanned ", last_replanned)
             time_since_replan = simulation_time - last_replanned
-            # print(time_since_replan)
             # Skip cases replanned recently to avoid excessive replanning
-            # if time_since_replan < 24:
-            #     continue
+            if time_since_replan < 24:
+                continue
 
             # Prioritize critical or long-waiting cases
             if target_day < 5:
@@ -121,13 +114,12 @@ class OptimizedPlanner(Planner):
                 else:
                     priority = 2
                 replan_cases.append((case_id, priority, wait_time))
-                # print(priority)
-        # print(len(cases_to_replan))
+
         # Sort by priority then wait time
         replan_cases.sort(key=lambda x: (x[1], -x[2]))
 
         # Limit number of replans per cycle to avoid system overload
-        max_replans = min(10, len(replan_cases))
+        max_replans = min(35, len(replan_cases))
         for i in range(max_replans):
             if i < len(replan_cases):
                 case_id, _, _ = replan_cases[i]
@@ -164,14 +156,6 @@ class OptimizedPlanner(Planner):
                 ResourceType.INTAKE: 4,
                 ResourceType.ER_PRACTITIONER: 9,
             }
-
-            try:
-                if hasattr(self, "simulator") and self.simulator:
-                    return self.simulator.schedule.get_number_of_resources(
-                        res_type, time
-                    )
-            except:
-                pass
 
             return default_max.get(res_type, 0)
 
